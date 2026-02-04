@@ -25,6 +25,31 @@ We have seen the tidyverse principles. From a machine learning perspective, the 
 
 *Takeaway* - Forget about different syntaxes for different packages, learn only one `tidymodels` way!
 
+## Step 1: Beginning with tidymodels model!
+
+Let us start by predicting penguin body mass from flipper length using our favorite method `linear regression`.
+
+```{r}
+# "Let everyone sweep in front of his own door, and the whole world will be clean"
+# Clean the data first - remove the missing na values
+penguins_clean <- penguins |>
+  drop_na()
+
+# “Choose well. Your choice is brief, and yet endless.”
+# Specify the model type and the engine
+lm_spec <- linear_reg() |> # Select the linear regression model
+  set_engine("lm") # We use R's in-built lm() function
+
+# “By seeking and blundering we learn.”
+# Fit the model to data
+lm_fit <- lm_spec |>
+  fit(body_mass_g ~ flipper_length_mm, data = penguins_clean)
+
+tidy(lm_fit)
+```
+
+*Takeaway* - **specify** the model, then **fit** it.
+
 ## The tidymodels ecosystem
 
 The core packages bagged in tidymodels are:
@@ -99,7 +124,7 @@ The core packages bagged in tidymodels are:
 
     In tidymodels framework, model **specification** is neatly separated from model **fitt.**
 
-    We see below an example where we specficy a model. In this case we choose the `rand_forest` or the Random Forest Model. \
+    We see below an example where we specficy a model. In this case we choose the `rand_forest` or the Random Forest Model.\
     **Note** that we are **not fitting** the model yet. This creates a model specification object which can be reused on other datasets. The `engine` argument or the specific package for the fit can be easily replaced by others. This makes the overall workflow easy to manage and clean.
 
     ```{r}
@@ -155,7 +180,7 @@ The core packages bagged in tidymodels are:
     head(baked)
     ```
 
-    ### Parsnip: Model interface 
+    ### Parsnip: Model interface
 
     Parsnip provides a modelling interface to many engines:
 
