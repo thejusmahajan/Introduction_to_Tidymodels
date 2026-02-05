@@ -21,7 +21,7 @@ conflicts_prefer(dplyr::filter,
                  palmerpenguins::penguins)
 ```
 
-We have seen the tidyverse principles. From a machine learning perspective, the `tidymodels` framework follows `tidyverse` philosophy and essentially is a collection of packages for `modeling` and `machine learning`. It provides a `consistent` and `modular` approach to the entire workflow - from preprocessing to evaluation of model's performance. It is noteworthy to say that `Nextflow`, an NGS workflow tool that you will see later in this course resembles tidymodel principles.
+We have seen the tidyverse principles. From a machine learning perspective, the `tidymodels` framework follows `tidyverse` philosophy and essentially is a collection of packages for `modeling` and `machine learning`. It provides a `consistent` and `modular` approach to the entire workflow - from preprocessing to evaluation of model's performance. It is noteworthy to say that `Nextflow`, an NGS workflow tool that you will see later in this course closely resembles tidymodel principles.
 
 *Takeaway* - Forget about different syntaxes for different packages, learn only one `tidymodels` way!
 
@@ -43,41 +43,195 @@ lm_spec <- linear_reg() |> # Select the linear regression model
 # “By seeking and blundering we learn.”
 # Fit the model to data
 lm_fit <- lm_spec |>
-  fit(body_mass_g ~ flipper_length_mm, data = penguins_clean)
+  fit(body_mass_g ~ flipper_length_mm, data = penguins_clean) # we "assume" as a first step that body_mass_g is a function of flipper length alone.
 
-tidy(lm_fit)
+tidy(lm_fit) # Show me the fitting stats.
 ```
 
-*Takeaway* - **specify** the model, then **fit** it.
+*Takeaway* - **Specify** the model, then **fit** it.
 
 ## Step 2: Making predictions!
 
 So we have trained the model in `Step 1`. Now we `predict`.
 
 ```{r}
-# Predict on the training data
+# Predict on the training data. 
 predictions <- lm_fit |>
-  predict(new_data = penguins_clean) # add previous comments
+  predict(new_data = penguins_clean) # Note that here we use the same data we are trained on as the preliminary step.
+# This makes no sense now, but wait! We will use another data set when we progress!
 
 # Combine predictions with actual values
 results <- penguins_clean |>
   select(body_mass_g, flipper_length_mm) |>
-  bind_cols(predictions)
+  bind_cols(predictions) # For comparison.
 
-head(results)
+head(results) 
 ```
 
 Note the `.pred` column. This is the model predictions of `body_mass_g` using flipper length.
 
 *Task* - Imagine what do you expect when we change the predictor from flipper length to bill length?
 
-If it is too hard to imagine, just plug in the `bill_length_mm` to `flipper_length_mm`. Are you getting the same results?
+If it is too hard to imagine, just plug in the `bill_length_mm` to `flipper_length_mm` and see for yourself. Are you getting the same results?
 
 ## Step 3: Preprocessing with Recipes
 
 In general, machine learning works better when the data is preprocessed. This is the step when we compare Apples to Apples and **not** Apples to Oranges.
 
-## The tidymodels ecosystem
+A **recipe** defines the preprocessing steps!
+
+```{r}
+# Define a recipe: predict species using all other columns!
+penguin_recipe <- recipe(species ~ ., data = penguins_clean) |>
+  step_normalize(all_numeric_predictors()) # Center and scale numbers.
+
+penguin_recipe # 
+```
+
+Note that `penguin_recipe` doesn't transform the data **yet**. It is just a *recipe*.\
+We do the preprocessing steps so that all the columns are scaled in such a way that the mean is 0 and the standard deviation is 1. This is a usual way to take the data away from its units. Technically `step_normalize()` do a `Z-score transformation` of the data.
+
+To actually transform the data, we need two important steps `prep()` and `bake()`.
+
+```{r}
+# We prep - Learning the parameters (mean, SD) from the data
+prepped <- prep(penguin_recipe) #
+
+# We bake - Apply all the transformations in our pan
+baked <- bake(prepped, new_data = NULL) # NULL means to use the training data
+
+head(baked)
+#tail(baked)
+
+```
+
+-   `recipe()` - We make a note of all the ingredients
+
+-   `prep`() - Collect and measure the ingredients
+
+-   `bake()` - Cook the data!
+
+    ## Step 4: Defining the model (parsnip)
+
+    Now that we have preprocessed the data with `reicpes`, we will specify the model we want to train. **parsnip** is the module we use for model specification. Note that this is separate from fitting.
+
+    ```{r}
+    # Model specification
+    model_spec <- multinom_reg() |> # Use multinomal regression
+      set_engine("nnet") |> # Using nnet package. Try using "glmnet" too.
+      set_mode("classification") # predicting categories instead of numbers which would be regression
+
+    # This creates and object, it won't do anyting unless data is fed in the next steps
+    model_spec
+    ```
+
+    ## Step 5: Combine into a Workflow
+
+    A **workflow** bags the recipe and model into one object:
+
+    ```{r}
+    # Create a workflow
+    penguin_wf <- workflow() |> # workflow obj
+      add_recipe(penguin_recipe) |> # Add recipe
+      add_model(
+        multinom_reg() |> # Multinomal regression (for more than 3 categoris)
+          set_engine("nnet") |> # use nnet package
+          set_mode("classification") # predicting categories instead of numbers
+      )
+      
+    # Fit the entire workflow
+    penguin_fit <- penguin_wf |>
+      fit(data = penguins_clean)
+
+    penguin_fit
+    ```
+
+    **Why use workflows?**
+
+-   Everything is in place in the right order.
+
+-   You can't preprocess test data differently
+
+-   The entire pipeline is one portable object
+
+    ## Step 6: Evaluate Performance
+
+    For every modelling study, there must be some way to check its goodness.\
+    We use **yardstick** to find this out.
+
+    ```{r}
+    # Get predictions
+    preds <- penguin_fit |>
+      augment(new_data = penguins_clean) # take the original data and agument it with the predictions
+
+    #preds
+
+    # Calculate the accuracy
+    accuracy(preds, truth = species, estimate = .pred_class) # This just gives the fraction of correct predctions from the total predictions.
+
+    # Multiple metrics all at once
+    metrics(preds, truth = species, estimate = .pred_class)
+
+    ```
+
+    **Wait... the accuracy is over the charts**. This is too good to be true. Let's investigate why.
+
+    ---
+
+    ## Step 7: Predicting on Training data makes little sense.
+
+    We predicted on the same exact data thate we trained on. Well, there happen to be a term for it **overfitting**. To get a good assessment we split our data:
+
+    ```{r}
+    # Split: 75% for training, 25% for testing
+    set.seed(100) # So that the random generator works the same way across runtimes.
+    data_split <- initial_split(penguins_clean, prop = 0.75, strata = species) # tidy models way of making partitions
+
+    train_data <- training(data_split)
+    test_data <- testing(data_split)
+    #
+    # 
+
+    ```
+
+    Now we refit on the training data and evaluate the test data using the same method as in the previous steps.
+
+    ```{r}
+    # Fit on the training data only
+    penguin_fit_proper <- penguin_wf |>
+      fit(data = train_data)
+
+    # Predict on the test data
+    preds_test <- penguin_fit_proper |>
+      augment(new_data = test_data)
+
+    # Let us look at the accuracies of both
+    comparison <- bind_rows(
+      training = accuracy(preds, species, .pred_class),
+      testing = accuracy(preds_test, species, .pred_class),
+      .id = "data_used"
+    )
+
+    comparison
+    ```
+
+    We can see that the `testing` accuracy is lower. This is to say that model has a somewhat realistic accuracy of prediction when it sees a new data set.
+
+    *Takeaway* - Evaluation is done on the unseen data!
+
+    ## The Big picture
+
+    **Preprocessing** - `recipe()` -\> `prep()` -\> `bake()`
+
+    **Modelling** - `model_spec()` -\> `set_engine()` -\> `fit()`
+
+    **Workflow** - \``add_recipe()` -\> `add_model()`-\> `fit()`
+
+    **Data split** - `initial_split()` -\> `training()` -\> `testing()`
+
+    **Evaluation** - `augment()` -\> `accuracy()` -\> `metrics()`
+
+-   he tidymodels ecosystem
 
 The core packages bagged in tidymodels are:
 
