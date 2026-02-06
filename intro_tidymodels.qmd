@@ -13,7 +13,8 @@ Necessary packages are loaded. We use the `penguins` data as we are acquainted w
 pacman::p_load(conflicted,
                tidyverse,
                palmerpenguins,
-               tidymodels)
+               tidymodels,
+               ranger, kknn)
 
 # Usual workflow - Conflicted packages are taken care of!
 conflicts_prefer(dplyr::filter,
