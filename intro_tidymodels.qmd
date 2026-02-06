@@ -210,8 +210,8 @@ To get a good assessment we first split our data using the **rsample** package. 
 rsample (split data)
     │
     ├── recipes (define preprocessing)
-    │                                 ──► workflows(bundle)──►fit()──►yardstick 
-    └── parsnip (define model)
+    │                                 -->workflows(bundle)-->fit()-->yardstick 
+    |── parsnip (define model)
 ```
 
 # Full Workflow
