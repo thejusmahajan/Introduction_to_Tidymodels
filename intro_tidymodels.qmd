@@ -8,16 +8,13 @@ Introduction to Tidymodels
 
 Necessary packages are loaded. We use the penguins data as we are acquainted with it in the prior chapters.
 
-{r}
+```{r} 
 # Load all the usual suspects with tidymodels
-pacman::p_load(conflicted,
-               tidyverse,
-               palmerpenguins,
-               tidymodels)
+pacman::p_load(conflicted, tidyverse, palmerpenguins, tidymodels)
 
 # Usual workflow - Conflicted packages are taken care of!
-conflicts_prefer(dplyr::filter,
-                 dplyr::slice)
+conflicts_prefer(dplyr::filter, dplyr::slice)
+```
 
 We have seen the tidyverse principles. From a machine learning perspective, the tidymodels framework follows tidyverse philosophy and essentially is a collection of packages for modeling and machine learning. It provides a consistent and modular approach to the entire workflow - from preprocessing to evaluation of model's performance.
 
@@ -31,20 +28,20 @@ Training!
 
 We will begin by looking at a barebone snapshot of tidymodels in action. We will use our good old penguins. Let us start by predicting penguin body mass from flipper length using our favorite method linear regression.
 
-{r}
-# Sweep the data out of dirt first - remove the missing na values
-penguins_clean <- penguins |>
-  drop_na()
+```{r}
+# Sweep the data out of dirt first - remove the missing na values 
+penguins_clean <- modeldata::penguins |> drop_na()
+```
 
 # Specify the model type and the engine
-lm_spec <- linear_reg() |> # Select the linear regression model
-  set_engine("lm") # We use R's in-built lm() function
+
+lm_spec \<- linear_reg() \|\> \# Select the linear regression model set_engine("lm") \# We use R's in-built lm() function
 
 # Fit the model to data
-lm_fit <- lm_spec |>
-  fit(body_mass_g ~ flipper_length_mm, data = penguins_clean) # we "assume" as a first step that body_mass_g is a function of flipper length alone.
 
-tidy(lm_fit) # Show me the fitting stats.
+lm_fit \<- lm_spec \|\> fit(body_mass_g \~ flipper_length_mm, data = penguins_clean) \# we "assume" as a first step that body_mass_g is a function of flipper length alone.
+
+tidy(lm_fit) \# Show me the fitting stats.
 
 Takeaway - Clean the data, Specify the model, then fit it.
 
@@ -52,18 +49,13 @@ Making predictions!
 
 So we have trained the model in the previous step. Now we predict using it.
 
-{r}
-# Predict on the training data. 
-predictions <- lm_fit |>
-  predict(new_data = penguins_clean) # Note that here we use the same data we are trained on as the preliminary step.
-# This predicting the trained data makes no sense now, but wait! We will use another data set when we progress!
+{r} \# Predict on the training data. predictions \<- lm_fit \|\> predict(new_data = penguins_clean) \# Note that here we use the same data we are trained on as the preliminary step. \# This predicting the trained data makes no sense now, but wait! We will use another data set when we progress!
 
 # Combine predictions with actual values
-results <- penguins_clean |>
-  select(body_mass_g, flipper_length_mm) |>
-  bind_cols(predictions) # For comparison.
 
-head(results) 
+results \<- penguins_clean \|\> select(body_mass_g, flipper_length_mm) \|\> bind_cols(predictions) \# For comparison.
+
+head(results)
 
 Note the .pred column. This is the model predictions of body_mass_g using flipper length.
 
@@ -81,27 +73,21 @@ In general, machine learning works better when the data is preprocessed. This is
 
 Simply defined, a recipe defines the preprocessing steps!
 
-{r}
-# Define a recipe: predict species using all other columns!
-penguin_rec <- recipe(species ~ ., data = penguins_clean) |>
-  step_normalize(all_numeric_predictors()) # Center and scale numbers.
+{r} \# Define a recipe: predict species using all other columns! penguin_rec \<- recipe(species \~ ., data = penguins_clean) \|\> step_normalize(all_numeric_predictors()) \# Center and scale numbers.
 
-penguin_rec # 
+penguin_rec \#
 
 Note that penguin_rec doesn't transform the data yet. It is just a recipe.We do the preprocessing steps so that all the columns are scaled in such a way that the mean is 0 and the standard deviation is 1. This is a usual way to take the data away from its units.
 
 To actually transform the data, we need two important steps prep() and bake().
 
-{r}
-# We prep - Learning the parameters (mean, SD) from the data
-prepped <- prep(penguin_rec) #
+{r} \# We prep - Learning the parameters (mean, SD) from the data prepped \<- prep(penguin_rec) \#
 
 # We bake - Apply all the transformations in our pan
-baked <- bake(prepped, new_data = NULL) # NULL means to use the training data
 
-head(baked)
-#tail(baked)
+baked \<- bake(prepped, new_data = NULL) \# NULL means to use the training data
 
+head(baked) #tail(baked)
 
 recipe() - We make a note of all the ingredients
 
@@ -113,13 +99,10 @@ Parsnip: Model specification
 
 Now that we have preprocessed the data with recipes, we will specify the model we want to train. parsnip is the module we use for model specification. Note that this is separate from fitting.
 
-{r}
-# Model specification
-model_spec <- multinom_reg() |> # Use multinomal regression
-  set_engine("nnet") |> # Using nnet package. Try using "glmnet" too.
-  set_mode("classification") # predicting categories instead of numbers which would be regression
+{r} \# Model specification model_spec \<- multinom_reg() \|\> \# Use multinomal regression set_engine("nnet") \|\> \# Using nnet package. Try using "glmnet" too. set_mode("classification") \# predicting categories instead of numbers which would be regression
 
 # This creates and object, it won't do anything unless data is fed in the next steps
+
 model_spec
 
 NOTE - You can fit() a parsnip specification directly as we've seen before, but when we use workflows (coming up!), fit() is called on the workflow instead giving it a logically strong standing.
@@ -128,12 +111,7 @@ Workflows: Bundle Recipe + Model
 
 Now that you have preprocessed using recipe and specified a model using parsnip, it is time to club them together. A workflow bags the recipe and model into one object.After the workflow object is created, we fit the entire workflow using fit().
 
-{r}
-# Create a workflow
-penguin_wf <- workflow() |> # workflow obj
-  add_recipe(penguin_rec) |> # Add recipe from above
-  add_model(model_spec) # Add model defined above
-
+{r} \# Create a workflow penguin_wf \<- workflow() \|\> \# workflow obj add_recipe(penguin_rec) \|\> \# Add recipe from above add_model(model_spec) \# Add model defined above
 
 Why use workflows?
 
@@ -147,10 +125,7 @@ Fitting the workflow
 
 After we have created the workflow above, we execute the workflow using fit().
 
-{r}
-# Fit the entire workflow
-penguin_fit <- penguin_wf |>
-  fit(data = penguins_clean)
+{r} \# Fit the entire workflow penguin_fit \<- penguin_wf \|\> fit(data = penguins_clean)
 
 penguin_fit
 
@@ -166,19 +141,17 @@ Yardstick: Evaluate Performance
 
 For every modelling study, there must be some way to check its goodness.We use yardstick to find this out.
 
-{r}
-# Get predictions
-preds <- penguin_fit |>
-  augment(new_data = penguins_clean) # take the original data and augment it with the predictions
+{r} \# Get predictions preds \<- penguin_fit \|\> augment(new_data = penguins_clean) \# take the original data and augment it with the predictions
 
 #preds
 
 # Calculate the accuracy
-accuracy(preds, truth = species, estimate = .pred_class) # This just gives the fraction of correct predictions from the total predictions.
+
+accuracy(preds, truth = species, estimate = .pred_class) \# This just gives the fraction of correct predictions from the total predictions.
 
 # Multiple metrics all at once
-metrics(preds, truth = species, estimate = .pred_class)
 
+metrics(preds, truth = species, estimate = .pred_class)
 
 Wait... the accuracy is over the charts. This is too good to be true. Let's investigate why.
 
@@ -192,11 +165,7 @@ Usual Procedure
 
 To get a good assessment we first split our data using the rsample package. Only then we define our recipes, model, bundle, fit and evaluate.
 
-rsample (split data)
-    │
-    ├── recipes (define preprocessing)
-    │                                 --> workflows(bundle)-->fit()-->yardstick 
-    |── parsnip (define model)
+rsample (split data) │ ├── recipes (define preprocessing) │ --\> workflows(bundle)--\>fit()--\>yardstick \|── parsnip (define model)
 
 Full Workflow
 
@@ -207,55 +176,36 @@ Step 1 - Splitting (rsample package)
 {r}
 
 # Split: 75% for training, 25% for testing
-set.seed(100) # So that the random generator works the same way across runtimes.
-data_split <- initial_split(penguins_clean, prop = 0.75, strata = species) # tidy models way of making partitions
 
-train_data <- training(data_split)
-test_data <- testing(data_split)
+set.seed(100) \# So that the random generator works the same way across runtimes. data_split \<- initial_split(penguins_clean, prop = 0.75, strata = species) \# tidy models way of making partitions
 
+train_data \<- training(data_split) test_data \<- testing(data_split)
 
 Step 2 - Preprocessing (recipes)
 
-{r}
-penguin_rec <- recipe(species ~ ., data = train_data) |>
-  step_normalize(all_numeric_predictors())
-
+{r} penguin_rec \<- recipe(species \~ ., data = train_data) \|\> step_normalize(all_numeric_predictors())
 
 Step 3: Define the model (parsnip)
 
-{r}
-penguin_spec <- multinom_reg() |>
-  set_engine("nnet") |>
-  set_mode("classification")
+{r} penguin_spec \<- multinom_reg() \|\> set_engine("nnet") \|\> set_mode("classification")
 
 Step 4: Putting it all in a bag (workflow)
 
-{r}
-penguin_wf <- workflow() |>
-  add_recipe(penguin_rec) |>
-  add_model(penguin_spec)
+{r} penguin_wf \<- workflow() \|\> add_recipe(penguin_rec) \|\> add_model(penguin_spec)
 
 penguin_wf
 
 Step 5: Fitting on a training data
 
-{r}
-penguin_final <- penguin_wf |>
-  fit(data = train_data)
-
+{r} penguin_final \<- penguin_wf \|\> fit(data = train_data)
 
 Step 6: Evaluation (yardstick) - Prediction on "new" data
 
-{r}
-test_predictions <- penguin_final |>
-  augment(new_data = test_data)
-
+{r} test_predictions \<- penguin_final \|\> augment(new_data = test_data)
 
 Calculate performance metrics
 
-{r}
-test_predictions |>
-  metrics(truth = species, estimate = .pred_class)
+{r} test_predictions \|\> metrics(truth = species, estimate = .pred_class)
 
 Notice the accuracy is lower than the accuracy we saw earlier. This can be regarded as a good estimate on how a model performs onuntrained data.
 
@@ -274,4 +224,3 @@ workflows: Bagging together recipe and model
 yardstick: Model metrics
 
 tune: Hyperparameter tuning - This is above the scope of this introduction script but shall be dealt with in the subsequent chapters.
-
