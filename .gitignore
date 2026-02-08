@@ -1,0 +1,19 @@
+# R artifacts
+.Rhistory
+.RData
+.Rproj.user/
+
+# Quarto output
+_freeze/
+*_files/
+*.html
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+test_*.qmd
+
+# Archive/downloads
+downloads/
