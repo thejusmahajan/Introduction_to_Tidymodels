@@ -1,0 +1,28 @@
+---
+title: "Test GitHub Editor"
+format: html
+editor: visual
+---
+
+## This is a Header
+
+Here is some `inline code` and **bold text**.
+
+```{r}
+# This is a proper code chunk
+x <- 1 + 1
+print(x)
+```
+
+### Another Section
+
+*Italic text* and more content.
+
+```{r}
+# Second code chunk
+library(tidyverse)
+penguins |>
+  filter(species == "Adelie")
+```
+
+End of test file.
